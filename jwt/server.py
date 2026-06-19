@@ -3,7 +3,7 @@ import uvicorn
 from pydantic import BaseModel
 from dataclasses import dataclass
 import hashlib
-
+from datetime import datetime, timedelta
 
 SECRET = "THE_SECRET"
 
@@ -18,7 +18,7 @@ USER_DB = {
     "the_user": User("the_user", "their_password", {"a", "b", "c"}),
     "another_user": User("another_user", "password", {"a"})
 }
-
+TOKEN_LIFETIME = 1
 
 class AuthenticateInput(BaseModel):
     user_id: str
@@ -38,9 +38,38 @@ class AuthorizeResponse(BaseModel):
     user_id: str
     status: str
 
-def generate_token(user: User) -> str:
-    original = f"TOKEN:{SECRET}:{user.user_id}"
-    return hashlib.md5(original.encode("utf-8")).hexdigest()
+@dataclass
+class Token:
+    user_id: str
+    created_at: datetime
+    lifetime: int
+
+    def is_expired(self) -> bool:
+        return self.created_at + timedelta(seconds=int(self.lifetime)) < datetime.now()
+
+    @classmethod
+    def from_str(cls, token: str) -> "Token":
+        user_id, created_at, lifetime = token.split("#")
+        return cls(
+                user_id=user_id, 
+                created_at=datetime.fromisoformat(created_at), 
+                lifetime=int(lifetime),
+        )
+
+    def __str__(self):
+        return f"{self.user_id}#{self.created_at.isoformat()}#{self.lifetime}"
+
+
+def sign(token: str) -> str:
+    return hashlib.md5(f"{SECRET}{token}".encode("utf-8")).hexdigest()
+
+def generate_token(user_id: str) -> str:
+    token = Token(
+            user_id=user_id,
+            created_at=datetime.now(),
+            lifetime=TOKEN_LIFETIME,
+    )
+    return f"{sign(token)}#{token}"
 
 
 app = FastAPI()
@@ -54,19 +83,23 @@ async def authenticate(input: AuthenticateInput):
     return AuthenticateResponse(
             user_id=input.user_id,
             status="Authenticated",
-            token=generate_token(USER_DB[input.user_id])
+            token=generate_token(input.user_id)
     )
 
 @app.post("/authorize")
 async def authorize(input: AuthorizeInput):
     if input.user_id not in USER_DB:
         return AuthorizeResponse(user_id=input.user_id, status="UnknownUser")
-    if input.token != generate_token(USER_DB[input.user_id]):
-        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized")
-    if input.resources is None and USER_DB[input.user_id].resources != RESOURCES:
-        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized")
-    if set(input.resources) > set(USER_DB[input.user_id].resources):
-        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized")
+    signature, raw_token = input.token.split("#", 1)
+    token = Token.from_str(raw_token)
+    if signature != sign(token):
+        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized: invalid token")
+    user_resources = USER_DB[input.user_id].resources
+    if input.resources is None and user_resources != RESOURCES \
+            or set(input.resources) > set(user_resources):
+        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized: insufficient access")
+    if token.is_expired():
+        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized: token expired")
     return AuthorizeResponse(user_id=input.user_id, status="Authorized")
 
 

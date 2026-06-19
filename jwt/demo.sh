@@ -23,6 +23,7 @@ response=$(curl -X POST "localhost:8000/authenticate" \
     -H "Content-Type: application/json")
 token=$(echo $response | jq -r .token)
 echo $token
+echo '{"user_id": "not_a_user", "token": "'${token}'"}'
 
 curl -X POST "localhost:8000/authorize" \
     -d '{"user_id": "not_a_user", "token": "'${token}'"}' \
@@ -47,3 +48,10 @@ curl -X POST "localhost:8000/authorize" \
     -d '{"user_id": "the_user", "token": "'${token}'", "resources": ["a", "b"]}' \
     -H "accept: application/json" \
     -H "Content-Type: application/json"
+echo
+sleep 3
+curl -X POST "localhost:8000/authorize" \
+    -d '{"user_id": "the_user", "token": "'${token}'", "resources": ["a", "b"]}' \
+    -H "accept: application/json" \
+    -H "Content-Type: application/json"
+

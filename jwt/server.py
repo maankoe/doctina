@@ -25,17 +25,14 @@ class AuthenticateInput(BaseModel):
     password: str
 
 class AuthenticateResponse(BaseModel):
-    user_id: str
     status: str
     token: str | None 
 
 class AuthorizeInput(BaseModel):
-    user_id: str
     token: str
     resources: list[str] = None
 
 class AuthorizeResponse(BaseModel):
-    user_id: str
     status: str
 
 @dataclass
@@ -81,26 +78,25 @@ async def authenticate(input: AuthenticateInput):
     if input.password != USER_DB[input.user_id].password:
         return AuthenticateResponse(user_id=input.user_id, status="Unauthenticated", token=None)
     return AuthenticateResponse(
-            user_id=input.user_id,
             status="Authenticated",
             token=generate_token(input.user_id)
     )
 
 @app.post("/authorize")
 async def authorize(input: AuthorizeInput):
-    if input.user_id not in USER_DB:
-        return AuthorizeResponse(user_id=input.user_id, status="UnknownUser")
     signature, raw_token = input.token.split("#", 1)
     token = Token.from_str(raw_token)
+    if token.user_id not in USER_DB:
+        return AuthorizeResponse(status="UnknownUser")
     if signature != sign(token):
-        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized: invalid token")
-    user_resources = USER_DB[input.user_id].resources
+        return AuthorizeResponse(status="Unauthorized: invalid token")
+    user_resources = USER_DB[token.user_id].resources
     if input.resources is None and user_resources != RESOURCES \
             or set(input.resources) > set(user_resources):
-        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized: insufficient access")
+        return AuthorizeResponse(status="Unauthorized: insufficient access")
     if token.is_expired():
-        return AuthorizeResponse(user_id=input.user_id, status="Unauthorized: token expired")
-    return AuthorizeResponse(user_id=input.user_id, status="Authorized")
+        return AuthorizeResponse(status="Unauthorized: token expired")
+    return AuthorizeResponse(status="Authorized")
 
 
 if __name__ == "__main__":

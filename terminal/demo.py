@@ -19,6 +19,7 @@ def getkey():
                 10: "return",
                 32: "space",
                 9: "tab",
+                113: "q",
                 27: "esc",
                 65: "up",
                 66: "down",
@@ -40,9 +41,9 @@ def main():
     try:
         while True:
             k = getkey()
-            if k == "esc":
+            if k in ["esc", "q"]:
                 quit()
-            elif k == "down":
+            elif k in ["down", "return"]:
                 pager.index += 1
                 pager.draw()
             elif k == "up":
@@ -56,23 +57,30 @@ def main():
                 pager.index = data.search(s, pager.index)
                 pager.draw()
             else:
-                print(k, ord(k))
+                try:
+                    print(k, ord(k))
+                except:
+                    print(k, "?")
     except (KeyboardInterrupt, SystemExit):
         os.system("stty sane")
-        print("stopping.")       
+        print("stopping.") 
+
 
 class Dataset:
-    def __init__(self):
-        self._data = [str(x) for x in range(100)]
+    def __init__(self, num_bits: int=16):
+        self._num_bits = num_bits
 
     def __getitem__(self, key):
-        return self._data[key]
+        if isinstance(key, slice):
+            return (encode_index(x) for x in range(key.start or 0, key.stop or len(self), key.step or 1))
+        return encode_index(key)
 
     def __len__(self):
-        return len(self._data)
+        return 2**self._num_bits
 
     def search(self, s, start):
-        for i, x in enumerate(self._data[start:]):
+        s = s.upper()
+        for i, x in enumerate(self[start:], start):
             if s in x:
                 return i
 
@@ -98,7 +106,11 @@ class Pager:
     def draw(self):
         paint(self._data[self._index:self._index+self._height-1])
 
-        
+
+def encode_index(value: int, padding: int=32) -> str:
+    return f'{value:0>{padding}X}'
+
+
 def paint(lines):
     print("\033[2J\033[H" + "\n".join(lines))
 

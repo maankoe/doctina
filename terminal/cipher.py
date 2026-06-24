@@ -22,14 +22,10 @@ def unscramble(scrambled, n: int=128, rounds: list[int]=None, original=None):
     return (left << half_n) + right
 
 def feistel_round(block, round_constant, half_n):
-    def split_shift(n_ratio: int):
-        a = half_n // n_ratio 
-        b = half_n - a
-        return ((mixed << a) | (mixed >> b)) & ((1 << half_n) - 1)
     mixed = round_constant ^ block & ((1 << half_n) - 1) 
-    mixed = split_shift(6)
     mixed = (mixed * 0x6c8e944d1f5aa3b7) & ((1 << half_n) - 1)
-    return split_shift(3)
+    shift = half_n // 6 
+    return ((mixed << shift) | (mixed >> (half_n-shift))) & ((1 << half_n) - 1)
 
 def encode_index(value: int, padding: int=32) -> str:
     return f"{value:0>{padding}X}"

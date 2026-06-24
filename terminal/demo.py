@@ -110,10 +110,8 @@ class Pager:
 def encode_index(value: int, padding: int=32) -> str:
     return f'{value:0>{padding}X}'
 
-
 def paint(lines):
     print("\033[2J\033[H" + "\n".join(lines))
-
 
 if __name__ == "__main__":
     main()

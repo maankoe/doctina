@@ -1,7 +1,6 @@
 import shutil
 import sys,tty,os,termios
-
-
+from data import Dataset
 
 
 def getkey():
@@ -54,7 +53,7 @@ def main():
                 pager.draw()
             elif k == "/":
                 s = input("/")
-                pager.index = data.search(s, pager.index)
+                pager.index = next(data.search(s, pager.index))
                 pager.draw()
             else:
                 try:
@@ -66,23 +65,6 @@ def main():
         print("stopping.") 
 
 
-class Dataset:
-    def __init__(self, num_bits: int=16):
-        self._num_bits = num_bits
-
-    def __getitem__(self, key):
-        if isinstance(key, slice):
-            return (encode_index(x) for x in range(key.start or 0, key.stop or len(self), key.step or 1))
-        return encode_index(key)
-
-    def __len__(self):
-        return 2**self._num_bits
-
-    def search(self, s, start):
-        s = s.upper()
-        for i, x in enumerate(self[start:], start):
-            if s in x:
-                return i
 
 class Pager:
     def __init__(self, data, index=0):
@@ -99,16 +81,14 @@ class Pager:
     def index(self, index):
         if index < 0:
             index = 0
-        elif index > len(self._data) - self._height:
-            index = len(self._data) - self._height + 1
+        elif index > self._data.size() - self._height:
+            index = self._data.size() - self._height + 1
         self._index = index
 
     def draw(self):
         paint(self._data[self._index:self._index+self._height-1])
 
 
-def encode_index(value: int, padding: int=32) -> str:
-    return f'{value:0>{padding}X}'
 
 def paint(lines):
     print("\033[2J\033[H" + "\n".join(lines))

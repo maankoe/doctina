@@ -1,97 +1,57 @@
 import shutil
-import sys,tty,os,termios
 from data import Dataset
-
-
-def getkey():
-    old_settings = termios.tcgetattr(sys.stdin)
-    tty.setcbreak(sys.stdin.fileno())
-    try:
-        while True:
-            b = os.read(sys.stdin.fileno(), 3).decode()
-            if len(b) == 3:
-                k = ord(b[2])
-            else:
-                k = ord(b)
-            key_mapping = {
-                127: "backspace",
-                10: "return",
-                32: "space",
-                9: "tab",
-                113: "q",
-                27: "esc",
-                65: "up",
-                66: "down",
-                67: "right",
-                68: "left",
-                47: "/",
-                58: ":",
-                63: "?",
-            }
-            return key_mapping.get(k, chr(k))
-    finally:
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+from keymap import get_key
+from context import Context
 
 
 def main():
     data = Dataset()
-    pager = Pager(data, 0)
+    context = Context(data.size())
+    pager = Pager(data, context)
     pager.draw()
     try:
         while True:
-            k = getkey()
+            k = get_key()
             if k in ["esc", "q"]:
                 quit()
-            elif k in ["down", "return"]:
-                pager.index += 1
-                pager.draw()
+            elif k in ["down"]:
+                context.down()
             elif k == "up":
-                pager.index -= 1
-                pager.draw()
+                context.up()
             elif k == ":":
-                pager.index = int(input(":"))
-                pager.draw()
+                x = int(input(":"))
+                context.goto(x)
+            elif k in ["return"]:
+                context.next()
             elif k == "/":
                 s = input("/")
-                pager.index = next(data.search(s, pager.index))
-                pager.draw()
+                if s:
+                    context.set_search(data.search(s, context.index))
+                else:
+                    context.next()
             else:
                 try:
                     print(k, ord(k))
                 except:
                     print(k, "?")
+            pager.draw()
     except (KeyboardInterrupt, SystemExit):
         os.system("stty sane")
         print("stopping.") 
 
 
-
 class Pager:
-    def __init__(self, data, index=0):
+    def __init__(self, data, context):
         self._data = data
-        self._index = index
+        self._context = context
         _, height = shutil.get_terminal_size((80, 20))
         self._height = height
 
-    @property
-    def index(self):
-        return self._index
-
-    @index.setter
-    def index(self, index):
-        if index < 0:
-            index = 0
-        elif index > self._data.size() - self._height:
-            index = self._data.size() - self._height + 1
-        self._index = index
-
     def draw(self):
-        paint(self._data[self._index:self._index+self._height-1])
+        start = self._context.index
+        lines = self._data[start:start+self._height-1] 
+        print("\033[2J\033[H" + "\n".join(lines))
 
-
-
-def paint(lines):
-    print("\033[2J\033[H" + "\n".join(lines))
 
 if __name__ == "__main__":
     main()

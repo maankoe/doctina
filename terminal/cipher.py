@@ -1,5 +1,5 @@
 
-def scramble(original, n: int=128, rounds: list[int]=None):
+def scramble(original, n: int=128, rounds: list[int]=None) -> int:
     half_n = n // 2
     left = original >> half_n 
     right = original & ((1 << half_n) - 1)
@@ -10,7 +10,7 @@ def scramble(original, n: int=128, rounds: list[int]=None):
         right = new_right
     return (left << half_n) + right
 
-def unscramble(scrambled, n: int=128, rounds: list[int]=None, original=None):
+def unscramble(scrambled: int, n: int=128, rounds: list[int]=None, original=None) -> int:
     half_n = n // 2
     left = scrambled >> half_n
     right = scrambled & ((1 << half_n) - 1)

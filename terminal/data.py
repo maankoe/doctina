@@ -4,7 +4,7 @@ from random import shuffle
 from cipher import scramble, unscramble
 
 
-NUM_BITS = 128
+NUM_BITS = 122
 cipher_rounds = [NUM_BITS//5, NUM_BITS//15, NUM_BITS]
 
 
@@ -38,6 +38,8 @@ class Dataset:
             for j, p in enumerate(range(len(x))):
                 found = f"{x[:p]}{s}{x[p:]}"
                 findex = decode_index(found)
+                if not _is_valid_uuid4(findex):
+                    continue
                 unscrambled = unscramble(findex, n=self._num_bits, rounds=cipher_rounds)
                 yield unscrambled
     
@@ -50,13 +52,44 @@ def create_index_encoder(num_bits: int) -> Callable[[int], str]:
     padding = ceil(num_bits/4)
     return lambda value: f"{value:0>{padding}X}"
 
+
 def create_uuid4_index_encoder() -> Callable[[int], str]:
     # xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
     # AF6C00C6-0816-FA64-B229-E5A7BA89A5CC
+    # XXXXXXXX-XXXX     - take these 48 bits from left
+    # 4XXX              - skip the next 4 bits (for the version)
+    #                     and take 12 more bits from left
+    # V                 - skip the next 2 bits (for the variant)
+    #                     and add the last bit from left
+    # XXX-XXXXXXXXXXXX  - the lower 61 bits come from right
     def _encode(value: int) -> str:
-        s = f"{value:0>32X}"
+        value &= (1 << 122) - 1
+        lower_62 = value & ((1 << 62) - 1)
+        mid_12 = (value >> 62) & ((1 << 12) - 1)
+        upper_48 = (value >> 74) & ((1 << 48) - 1)
+        
+        result = 0
+        result |= upper_48 << 80  # Shift upper bits to the top
+        result |= 4 << 76         # Inject version 4 (bits 76-79)
+        result |= mid_12 << 64     # Inject middle bits (bits 64-75)
+        result |= 2 << 62         # Inject variant '10' (bits 62-63)
+        result |= lower_62        # Inject remaining lower bits (bits 0-61)
+        s = f"{result:0>32X}"
         return f"{s[:8]}-{s[8:12]}-{s[12:16]}-{s[16:20]}-{s[20:]}"
     return _encode
+
+
+def _is_valid_uuid4(value: int) -> bool:
+    if not (0 <= value <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF):
+        return False 
+    version = (value >> 76) & 0xF
+    if version != 4:
+        return False 
+    variant = (value >> 62) & 0x3
+    if variant != 2:
+        return False
+    return True
+
 
 def decode_index(s: str) -> int:
     return int(s, 16)

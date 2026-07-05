@@ -9,9 +9,11 @@ cipher_rounds = [NUM_BITS//5, NUM_BITS//15, NUM_BITS]
 
 
 class Dataset:
-    def __init__(self, num_bits: int=NUM_BITS, encode_index: Callable[[int], str]=None):
+    def __init__(self, num_bits: int=NUM_BITS, encode_index: Callable[[int], str]=None,
+                 reversed: bool=False):
         self._num_bits = num_bits
         self._encode_index = encode_index or create_uuid4_index_encoder()
+        self._reversed = reversed
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -19,13 +21,13 @@ class Dataset:
         return self._encode_index(scramble(key, self._num_bits, cipher_rounds))
 
     def __iter__(self):
-        for x in range(0, self.size()):
+        for x in rrange(0, self.size(), self._reversed):
             yield self[x]
 
     def size(self):
         return 2**self._num_bits
 
-    def search(self, s: str, start: int=0):
+    def search(self, s: str, start: int=0, reversed=False):
         s = s.upper()
         s_chars = s.replace("-", "")
         n_bits = binary_len(decode_index(s_chars)) 
@@ -33,9 +35,10 @@ class Dataset:
         fill_data = Dataset(
                 num_bits=fill_bits, 
                 encode_index=create_index_encoder(fill_bits),
+                reversed=reversed,
         )
         for i, x in enumerate(fill_data):
-            for j, p in enumerate(range(len(x))):
+            for j, p in enumerate(rrange(0, len(x))):
                 found = f"{x[:p]}{s_chars}{x[p:]}"
                 findex = decode_index(found)
                 if not _is_valid_uuid4(findex):
@@ -44,6 +47,12 @@ class Dataset:
                     continue
                 yield unscramble(findex, n=self._num_bits, rounds=cipher_rounds)
     
+
+def rrange(start: int, stop: int, reversed: bool=False):
+    if reversed:
+        return range(stop-1, start-1, -1)
+    return range(start, stop)
+
 
 def binary_len(value: int) -> str:
     return len(f"{value:b}")

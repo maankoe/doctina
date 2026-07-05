@@ -6,7 +6,7 @@ from context import Context
 
 def main():
     data = Dataset()
-    context = Context(data.size())
+    context = Context(data)
     pager = Pager(data, context)
     pager.draw()
     try:
@@ -26,9 +26,19 @@ def main():
             elif k == "/":
                 s = input("/")
                 if s:
-                    context.set_search(data.search(s, context.index))
+                    context.set_search(s)
                 else:
+                    context.set_search()
                     context.next()
+            elif k == "?":
+                s = input("?")
+                if s:
+                    context.set_search(s, reversed=True)
+                else:
+                    context.set_search(reversed=True)
+                    context.next()
+            elif k == "c":
+                context.clear_search()
             else:
                 try:
                     print(k, ord(k))
@@ -50,7 +60,7 @@ class Pager:
     def draw(self):
         start = self._context.index
         lines = self._data[start:start+self._height-1] 
-        print("\033[2J\033[H" + "\n".join(lines))
+        print("\033[2J\033[H" + "\n".join((f"{i}\t{line}" for i, line in enumerate(lines, self._context.index))))
 
 
 if __name__ == "__main__":

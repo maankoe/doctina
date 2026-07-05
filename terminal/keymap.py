@@ -17,6 +17,7 @@ def get_key():
                 32: "space",
                 9: "tab",
                 113: "q",
+                99: "c",
                 27: "esc",
                 65: "up",
                 66: "down",

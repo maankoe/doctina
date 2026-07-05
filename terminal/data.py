@@ -27,8 +27,8 @@ class Dataset:
 
     def search(self, s: str, start: int=0):
         s = s.upper()
-        int_s = decode_index(s)
-        n_bits = binary_len(int_s) 
+        s_chars = s.replace("-", "")
+        n_bits = binary_len(decode_index(s_chars)) 
         fill_bits = self._num_bits - n_bits
         fill_data = Dataset(
                 num_bits=fill_bits, 
@@ -36,12 +36,13 @@ class Dataset:
         )
         for i, x in enumerate(fill_data):
             for j, p in enumerate(range(len(x))):
-                found = f"{x[:p]}{s}{x[p:]}"
+                found = f"{x[:p]}{s_chars}{x[p:]}"
                 findex = decode_index(found)
                 if not _is_valid_uuid4(findex):
                     continue
-                unscrambled = unscramble(findex, n=self._num_bits, rounds=cipher_rounds)
-                yield unscrambled
+                if s not in self._encode_index(findex):
+                    continue
+                yield unscramble(findex, n=self._num_bits, rounds=cipher_rounds)
     
 
 def binary_len(value: int) -> str:

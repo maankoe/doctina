@@ -24,7 +24,10 @@ class Dataset:
         for x in rrange(0, self.size(), self._reversed):
             yield self[x]
 
-    def size(self):
+    def num_bits(self) -> int:
+        return self._num_bits
+
+    def size(self) -> int:
         return 2**self._num_bits
 
     def search(self, s: str, start: int=0, reversed=False):

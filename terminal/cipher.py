@@ -1,16 +1,18 @@
-
-def scramble(original, n: int=128, rounds: list[int]=None) -> int:
+def scramble(original, n: int = 128, rounds: list[int] = None) -> int:
     half_n = n // 2
-    left = original >> half_n 
+    left = original >> half_n
     right = original & ((1 << half_n) - 1)
     for round in rounds or []:
-        seed = feistel_round(right, round, half_n) 
+        seed = feistel_round(right, round, half_n)
         new_right = left ^ seed
         left = right
         right = new_right
     return (left << half_n) + right
 
-def unscramble(scrambled: int, n: int=128, rounds: list[int]=None, original=None) -> int:
+
+def unscramble(
+    scrambled: int, n: int = 128, rounds: list[int] = None, original=None
+) -> int:
     half_n = n // 2
     left = scrambled >> half_n
     right = scrambled & ((1 << half_n) - 1)
@@ -21,33 +23,38 @@ def unscramble(scrambled: int, n: int=128, rounds: list[int]=None, original=None
         left = old_left
     return (left << half_n) + right
 
-def feistel_round(block, round_constant, half_n):
-    mixed = round_constant ^ block & ((1 << half_n) - 1) 
-    mixed = (mixed * 0x6c8e944d1f5aa3b7) & ((1 << half_n) - 1)
-    shift = half_n // 6 
-    return ((mixed << shift) | (mixed >> (half_n-shift))) & ((1 << half_n) - 1)
 
-def encode_index(value: int, padding: int=32) -> str:
+def feistel_round(block, round_constant, half_n):
+    mixed = round_constant ^ block & ((1 << half_n) - 1)
+    mixed = (mixed * 0x6C8E944D1F5AA3B7) & ((1 << half_n) - 1)
+    shift = half_n // 6
+    return ((mixed << shift) | (mixed >> (half_n - shift))) & ((1 << half_n) - 1)
+
+
+def encode_index(value: int, padding: int = 32) -> str:
     return f"{value:0>{padding}X}"
+
 
 def encode_binary(value: int, n=32) -> str:
     return f"{value:0{n}b}"
 
+
 if __name__ == "__main__":
-    n = 128 
-    rounds = [n//5, n//15, n]
+    n = 128
+    rounds = [n // 5, n // 15, n]
     for a in range(1, 2**n):
         scrambled = scramble(a, n, rounds)
         unscrambled = unscramble(scrambled, n, rounds, original=a)
-        #print(a,
+        # print(a,
         #      encode_binary(a, n),
         #      ",".join([encode_binary(x, n) for x in rounds]),
         #      encode_binary(scrambled, n),
         #      encode_binary(unscrambled, n),
         #      )
-        print(a,
-              encode_index(a, n//4),
-              ",".join([encode_index(x, n//4) for x in rounds]),
-              encode_index(scrambled, n//4),
-              encode_index(unscrambled, n//4),
-              )
+        print(
+            a,
+            encode_index(a, n // 4),
+            ",".join([encode_index(x, n // 4) for x in rounds]),
+            encode_index(scrambled, n // 4),
+            encode_index(unscrambled, n // 4),
+        )

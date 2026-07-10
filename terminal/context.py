@@ -1,16 +1,11 @@
 from dataclasses import dataclass
 from collections.abc import Iterable
 from data import Dataset
-
-@dataclass(frozen=True)
-class Search:
-    s: str
-    iterator: Iterable[int] 
-    reversed: bool
+from search import Search, Direction
 
 
 class Context:
-    def __init__(self, data: Dataset, start_index: int=0):
+    def __init__(self, data: Dataset, start_index: int = 0):
         self._data = data
         self._index = start_index
         self._search = None
@@ -21,28 +16,28 @@ class Context:
     def index(self) -> int:
         return self._index
 
-    def down(self, n: int=1):
+    def down(self, n: int = 1):
         self.goto(self._index + n)
 
-    def up(self, n: int=1):
+    def up(self, n: int = 1):
         self.goto(self._index - n)
 
-    def set_search(self, s: str | None=None, reversed: bool=False):
+    def set_search(self, s: str | None = None, direction: Direction = Direction.DOWN):
         if s is None and not self._search:
             raise ValueError("Cannot pass empty search without existing search")
-        if self._search and self._search.s == s and self._search.reversed == reversed:
-            self.next()
+        if self._search and not s:
+            if self._search.direction is not direction:
+                self._search.reverse()
             return
-        resolved_s = s or self._search.s
-        self._search = Search(resolved_s, self._data.search(resolved_s, self._index, reversed=reversed), reversed)
-        self.next()
+        if s or self._search != s:
+            self._search = Search(self._data, s, direction)
 
     def clear_search(self):
         self._search = None
 
     def next(self):
         if self._search is not None:
-            self.goto(next(self._search.iterator))
+            self.goto(self._search.next())
         else:
             self.down()
 
@@ -52,4 +47,3 @@ class Context:
         elif index > self._max_index - self._height:
             index = self._max_index - self._height + 1
         self._index = index
-        

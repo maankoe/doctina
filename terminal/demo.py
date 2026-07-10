@@ -2,6 +2,7 @@ import shutil
 from data import Dataset
 from keymap import get_key
 from context import Context
+from search import Direction
 
 
 def main():
@@ -29,14 +30,14 @@ def main():
                     context.set_search(s)
                 else:
                     context.set_search()
-                    context.next()
+                context.next()
             elif k == "?":
                 s = input("?")
                 if s:
-                    context.set_search(s, reversed=True)
+                    context.set_search(s, direction=Direction.DOWN)
                 else:
-                    context.set_search(reversed=True)
-                    context.next()
+                    context.set_search(direction=Direction.DOWN)
+                context.next()
             elif k == "c":
                 context.clear_search()
             else:
@@ -47,7 +48,7 @@ def main():
             pager.draw()
     except (KeyboardInterrupt, SystemExit):
         os.system("stty sane")
-        print("stopping.") 
+        print("stopping.")
 
 
 class Pager:
@@ -59,8 +60,13 @@ class Pager:
 
     def draw(self):
         start = self._context.index
-        lines = self._data[start:start+self._height-1] 
-        print("\033[2J\033[H" + "\n".join((f"{i}\t{line}" for i, line in enumerate(lines, self._context.index))))
+        lines = self._data[start : start + self._height - 1]
+        print(
+            "\033[2J\033[H"
+            + "\n".join(
+                (f"{i}\t{line}" for i, line in enumerate(lines, self._context.index))
+            )
+        )
 
 
 if __name__ == "__main__":

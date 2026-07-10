@@ -1,4 +1,4 @@
-import sys,tty,os,termios
+import sys, tty, os, termios
 
 
 def get_key():

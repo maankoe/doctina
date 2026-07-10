@@ -20,7 +20,7 @@ class Search:
             self._next_index()
 
     def reverse(self):
-        self._reversed = True
+        self._reversed = not self._reversed
         self._next_index()
         self._next_index()
 
@@ -28,11 +28,10 @@ class Search:
         while True:
             x = self._fill_data[self._fill_data_index]
             found = f"{x[:self._insert_pos]}{self._s_chars}{x[self._insert_pos:]}"
-            print(self._insert_pos, self._fill_data_index)
             findex = decode_index(found)
             self._next_index()
-            #if not _is_valid_uuid4(findex):
-            #    continue
+            if not _is_valid_uuid4(findex):
+                continue
             unscrambled = unscramble(findex, n=self._data.num_bits(), rounds=cipher_rounds)
             if self._s not in self._data[unscrambled]:
                 print("NOT", self._data[unscrambled])
